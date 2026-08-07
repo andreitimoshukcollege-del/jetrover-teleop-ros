@@ -80,16 +80,23 @@ class RobotController(Node):
 
         self.basePub = self.createPublisher(self.baseName, Int32, self.baseTopic, self.pollRate, \
                                             self.basePublisher)
-        self.lowerArmPub = self.createPublisher(self.lowerArmName, Int32, self.lowerArmTopic, self.pollRate, \
-                                            self.lowerArmPublisher)
+        # lower/upper arm and gripper feedback publishers disabled for now: bus_servo_queue is
+        # maxsize=1 with no request/response correlation by servo ID (board_manager's
+        # bus_servo_read_and_unpack just returns whatever's next in the queue), so polling
+        # several servos concurrently at 50Hz each causes real cross-talk -- a late response to
+        # one servo's timed-out request gets consumed by a different servo's next request,
+        # which looked like every read silently failing. Re-enable once that's fixed properly;
+        # teleoperation's Teleop.RobotHost integration (Phase 1) only needs the base servo.
+        #self.lowerArmPub = self.createPublisher(self.lowerArmName, Int32, self.lowerArmTopic, self.pollRate, \
+        #                                    self.lowerArmPublisher)
         #self.middleArmPub = self.createPublisher(self.middleArmName, Int32, self.middleArmTopic, self.pollRate, \
         #                                    self.middleArmPublisher)
-        self.upperArmPub = self.createPublisher(self.upperArmName, Int32, self.upperArmTopic, self.pollRate, \
-                                            self.upperArmPublisher)
-        self.gripperBasePub = self.createPublisher(self.gripperBaseName, Int32, self.gripperBaseTopic, self.pollRate, \
-                                            self.gripperBasePublisher) 
-        self.gripperMainPub = self.createPublisher(self.gripperMainName, Int32, self.gripperMainTopic, self.pollRate, \
-                                            self.gripperMainPublisher) 
+        #self.upperArmPub = self.createPublisher(self.upperArmName, Int32, self.upperArmTopic, self.pollRate, \
+        #                                    self.upperArmPublisher)
+        #self.gripperBasePub = self.createPublisher(self.gripperBaseName, Int32, self.gripperBaseTopic, self.pollRate, \
+        #                                    self.gripperBasePublisher)
+        #self.gripperMainPub = self.createPublisher(self.gripperMainName, Int32, self.gripperMainTopic, self.pollRate, \
+        #                                    self.gripperMainPublisher)
 
         self.batteryPub = self.createPublisher(self.batteryName, Int32, self.batteryTopic, 5, \
                                             self.batteryPublisher)  
