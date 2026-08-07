@@ -80,19 +80,20 @@ class RobotController(Node):
 
         self.basePub = self.createPublisher(self.baseName, Int32, self.baseTopic, self.pollRate, \
                                             self.basePublisher)
-        # lower/upper arm and gripper feedback publishers disabled for now: bus_servo_queue is
-        # maxsize=1 with no request/response correlation by servo ID (board_manager's
-        # bus_servo_read_and_unpack just returns whatever's next in the queue), so polling
-        # several servos concurrently at 50Hz each causes real cross-talk -- a late response to
-        # one servo's timed-out request gets consumed by a different servo's next request,
-        # which looked like every read silently failing. Re-enable once that's fixed properly;
-        # teleoperation's Teleop.RobotHost integration (Phase 1) only needs the base servo.
-        #self.lowerArmPub = self.createPublisher(self.lowerArmName, Int32, self.lowerArmTopic, self.pollRate, \
-        #                                    self.lowerArmPublisher)
-        #self.middleArmPub = self.createPublisher(self.middleArmName, Int32, self.middleArmTopic, self.pollRate, \
-        #                                    self.middleArmPublisher)
-        #self.upperArmPub = self.createPublisher(self.upperArmName, Int32, self.upperArmTopic, self.pollRate, \
-        #                                    self.upperArmPublisher)
+        # lower/middle/upper re-enabled now that the real root cause (a single-slot response
+        # queue with no request/response correlation, silently dropping a fresh response
+        # whenever a previous request's response had arrived late -- see
+        # board_manager/robot_controller_sdk.py's bus_servo_read_and_unpack) is fixed. Polling
+        # several servos concurrently at 50Hz each is no longer a problem once each read drains
+        # any stale queued response before waiting for its own.
+        self.lowerArmPub = self.createPublisher(self.lowerArmName, Int32, self.lowerArmTopic, self.pollRate, \
+                                            self.lowerArmPublisher)
+        self.middleArmPub = self.createPublisher(self.middleArmName, Int32, self.middleArmTopic, self.pollRate, \
+                                            self.middleArmPublisher)
+        self.upperArmPub = self.createPublisher(self.upperArmName, Int32, self.upperArmTopic, self.pollRate, \
+                                            self.upperArmPublisher)
+        # Gripper feedback stays disabled -- teleoperation's Phase 2 sends the gripper as an
+        # absolute, open-loop command (no delta tracking needed), so it doesn't consume this.
         #self.gripperBasePub = self.createPublisher(self.gripperBaseName, Int32, self.gripperBaseTopic, self.pollRate, \
         #                                    self.gripperBasePublisher)
         #self.gripperMainPub = self.createPublisher(self.gripperMainName, Int32, self.gripperMainTopic, self.pollRate, \
