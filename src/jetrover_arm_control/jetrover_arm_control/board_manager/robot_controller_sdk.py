@@ -347,6 +347,17 @@ class Board:
 
     def pwm_servo_read_and_unpack(self, servo_id, cmd, unpack):
         with self.servo_read_lock:
+            # Discard a stale, previously-unconsumed response before sending a new request.
+            # packet_report_pwm_servo drops an incoming response on the floor (queue.Full) if
+            # the single-slot queue is already occupied -- if a *previous* request's response
+            # arrived late (after that caller had already given up on timeout), it sits here
+            # forever, and every subsequent read either gets that stale value back or silently
+            # loses its own real response to the same queue.Full drop. Clearing first
+            # guarantees whatever we wait for below is the response to *this* request.
+            try:
+                self.pwm_servo_queue.get_nowait()
+            except queue.Empty:
+                pass
             self.buf_write(PacketFunction.PACKET_FUNC_PWM_SERVO, [cmd, servo_id])
             try:
                 data = self.pwm_servo_queue.get(block=True, timeout=1)
@@ -420,6 +431,13 @@ class Board:
 
     def bus_servo_read_and_unpack(self, servo_id, cmd, unpack):
         with self.servo_read_lock:
+            # See pwm_servo_read_and_unpack's identical comment -- clears a stale,
+            # previously-unconsumed response (from a request whose caller already timed out)
+            # so the response we wait for below is guaranteed to be this request's own.
+            try:
+                self.bus_servo_queue.get_nowait()
+            except queue.Empty:
+                pass
             self.buf_write(PacketFunction.PACKET_FUNC_BUS_SERVO, [cmd, servo_id])
             try:
                 data = self.bus_servo_queue.get(block=True, timeout=1)
