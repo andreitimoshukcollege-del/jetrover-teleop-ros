@@ -348,7 +348,17 @@ class Board:
     def pwm_servo_read_and_unpack(self, servo_id, cmd, unpack):
         with self.servo_read_lock:
             self.buf_write(PacketFunction.PACKET_FUNC_PWM_SERVO, [cmd, servo_id])
-            data = self.pwm_servo_queue.get(block=True, timeout=1)
+            try:
+                data = self.pwm_servo_queue.get(block=True, timeout=1)
+            except queue.Empty:
+                # The board occasionally doesn't respond within the timeout -- a real,
+                # observed occurrence, not a bug in this read call. This used to propagate
+                # queue.Empty uncaught, which crashed the whole node when called from a
+                # timer/subscription callback (rclpy re-raises an unhandled callback
+                # exception and tears the executor down). Every caller already treats a
+                # falsy return as "no data this cycle" (see ServoController.getRawPos), so
+                # returning None here is consistent with the existing contract, not new.
+                return None
             servo_id, cmd, info = struct.unpack(unpack, data)
             return info
 
@@ -411,7 +421,13 @@ class Board:
     def bus_servo_read_and_unpack(self, servo_id, cmd, unpack):
         with self.servo_read_lock:
             self.buf_write(PacketFunction.PACKET_FUNC_BUS_SERVO, [cmd, servo_id])
-            data = self.bus_servo_queue.get(block=True, timeout=1)
+            try:
+                data = self.bus_servo_queue.get(block=True, timeout=1)
+            except queue.Empty:
+                # See pwm_servo_read_and_unpack's identical comment -- an uncaught queue.Empty
+                # here previously crashed the whole node the first time the board was slow to
+                # respond (observed in practice, not a hypothetical).
+                return None
             servo_id, cmd, success, *info = struct.unpack(unpack, data)
             if success == 0:
                 return info

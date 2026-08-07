@@ -36,6 +36,12 @@ class ServoController:
         """
         # Fetch the current position
         currentPos = self.getRawPos(servoID=servoID)
+        if currentPos is None:
+            # The board's read can time out (real, observed occurrence -- see
+            # robot_controller_sdk.py's bus_servo_read_and_unpack). Skipping this command
+            # rather than crashing on `None + int` matches how every read failure elsewhere
+            # in this file is already treated: missed data for one cycle, not a fatal error.
+            return
         stepSize = 50
 
         # Calculate the new target position based on direction
